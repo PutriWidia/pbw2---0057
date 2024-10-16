@@ -3,6 +3,9 @@
 namespace App\Http\Controllers;
 
 use App\Models\buku;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Storage;
+
 use App\Http\Requests\StorebukuRequest;
 use App\Http\Requests\UpdatebukuRequest;
 
@@ -13,7 +16,9 @@ class BukuController extends Controller
      */
     public function index()
     {
-        return view('buku/index');
+        return view('buku/index', [
+            'bukus' => DB::table('bukus')->get()
+        ]);
     }
 
     /**
@@ -55,24 +60,48 @@ class BukuController extends Controller
     /**
      * Show the form for editing the specified resource.
      */
-    public function edit(buku $buku)
+    public function edit($id)
     {
-        //
+        $test = DB::table('bukus')->where('id', $id)->get();
+        return view('buku/update', [
+            'buku' => $test[0]
+        ]);
     }
 
     /**
      * Update the specified resource in storage.
      */
-    public function update(UpdatebukuRequest $request, buku $buku)
+    public function update(UpdatebukuRequest $request, $id)
     {
-        //
+        $ValidatedDate = $request->validate([
+            'judul' => 'required',
+            'penulisan' => 'required',
+            'kategori' => 'required',
+            'sampul' => 'image|file|max:2048',
+        ]);
+
+        if ($request->file('sampul')) {
+            if ($request->sampulLama){
+                Storage::delete($request->sampulLama);
+            }
+            $ValidatedDate['sampul'] = $request->file('sampul')->store('/sampul-buku');
+        }
+        Buku::where('id', $id)->update($ValidatedDate);
+        return redirect('/buku');
     }
 
     /**
      * Remove the specified resource from storage.
      */
-    public function destroy(buku $buku)
+    public function destroy($id)
     {
-        //
+        $test = DB::table('bukus')->select('sampul')
+            ->where('id', $id)
+            ->get();
+        if ($test[0]->sampul){
+            Storage::delete($test[0]->sampul);
+        }
+        Buku::destroy($id);
+        return redirect('/buku');
     }
 }
